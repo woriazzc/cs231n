@@ -25,7 +25,9 @@ def affine_forward(x, w, b):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N = x.shape[0]
+    nx = np.reshape(x, (N, -1))
+    out = nx.dot(w) + b
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -57,7 +59,12 @@ def affine_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N = x.shape[0]
+    nx = np.reshape(x, (N, -1))
+    dx = dout.dot(w.T)
+    dw = np.dot(nx.T, dout)
+    db = np.sum(dout, axis=0)
+    dx = np.reshape(dx, x.shape)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -82,7 +89,7 @@ def relu_forward(x):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    out = x*(x>0)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -108,7 +115,9 @@ def relu_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    x[x>0] = 1
+    x[x<0] = 0
+    dx = x * dout
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -137,7 +146,15 @@ def softmax_loss(x, y):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    scores = x
+    n_train, n_classes = scores.shape
+    exp_scores = np.exp(scores)
+    r_sum = np.reshape(np.sum(exp_scores, axis=1), (n_train, 1))
+    exp_scores /= r_sum
+    loss = -np.sum(np.log(exp_scores[np.arange(n_train), y]))
+    loss /= n_train
+    exp_scores[np.arange(n_train), y] -= 1
+    dx = exp_scores / n_train
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -216,7 +233,13 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         #######################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        sample_mean = np.mean(x, axis=0, keepdims=True)
+        sample_var = np.var(x, axis=0, keepdims=True)
+        running_mean = momentum * running_mean + (1 - momentum) * sample_mean
+        running_var = momentum * running_var + (1 - momentum) * sample_var
+        xh = (x - sample_mean) / np.sqrt(sample_var + eps)
+        out = gamma * xh + beta
+        cache = (x, xh, gamma, beta, sample_mean, sample_var, eps)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         #######################################################################
@@ -231,7 +254,7 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         #######################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        out = (x - running_mean) / np.sqrt(running_var + eps)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         #######################################################################
@@ -272,7 +295,15 @@ def batchnorm_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    m = dout.shape[0]
+    x, xh, gamma, beta, mean, var, eps = cache
+    dgamma = np.sum(xh*dout, axis=0)
+    dbeta = np.sum(dout, axis=0)
+    dxh = dout * gamma
+    revstd = 1 / np.sqrt(var + eps)
+    dvar = np.sum(dxh * (x - mean) * (-0.5) * (revstd**3), axis=0)
+    dmean = np.sum(dxh * (-1) * revstd, axis=0) + dvar * np.sum(-2*(x - mean), axis=0) / m
+    dx = dxh * revstd + dvar * 2 * (x - mean) / m + dmean / m
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
