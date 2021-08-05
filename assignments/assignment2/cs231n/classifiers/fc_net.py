@@ -79,7 +79,7 @@ class FullyConnectedNet(object):
         for i in range(1, len(tmp)):
             self.params["W{}".format(i)] = np.random.normal(mu, sigma, (tmp[i-1], tmp[i]))
             self.params["b{}".format(i)] = np.zeros(tmp[i])
-        if normalization == "batchnorm":
+        if normalization == "batchnorm" or normalization == "layernorm":
             for i in range(1, self.num_layers):
                 self.params["gamma{}".format(i)] = np.ones(hidden_dims[i-1])
                 self.params["beta{}".format(i)] = np.zeros(hidden_dims[i-1])
@@ -107,7 +107,7 @@ class FullyConnectedNet(object):
         if self.normalization == "batchnorm":
             self.bn_params = [{"mode": "train"} for i in range(self.num_layers - 1)]
         if self.normalization == "layernorm":
-            self.bn_params = [{} for i in range(self.num_layers - 1)]
+            self.ln_params = [{} for i in range(self.num_layers - 1)]
 
         # Cast all parameters to the correct datatype.
         for k, v in self.params.items():
@@ -159,7 +159,20 @@ class FullyConnectedNet(object):
         cache = []
         tX = X
         for i in range(0, self.num_layers - 1):
-            tX, ch = affine_relu_forward(tX, self.params["W{}".format(i + 1)], self.params["b{}".format(i + 1)])
+            W = self.params["W{}".format(i + 1)]
+            b = self.params["b{}".format(i + 1)]
+            if self.normalization == "batchnorm":
+                gamma = self.params["gamma{}".format(i + 1)]
+                beta = self.params["beta{}".format(i + 1)]
+                bn_param = self.bn_params[i]
+                tX, ch = affine_bn_relu_forward(tX, W, b, gamma, beta, bn_param)
+            elif self.normalization == "layernorm":
+                gamma = self.params["gamma{}".format(i + 1)]
+                beta = self.params["beta{}".format(i + 1)]
+                ln_param = self.ln_params[i]
+                tX, ch = affine_ln_relu_forward(tX, W, b, gamma, beta, ln_param)
+            else:
+                tX, ch = affine_relu_forward(tX, W, b)
             cache.append(ch)
         tX, ch = affine_forward(tX, self.params["W{}".format(self.num_layers)], self.params["b{}".format(self.num_layers)])
         cache.append(ch)
@@ -192,15 +205,28 @@ class FullyConnectedNet(object):
 
         loss, dout = softmax_loss(scores, y)
         for i in range(self.num_layers):
-            W = self.params["W{}".format(i+1)]
+            W = self.params["W{}".format(i + 1)]
             loss += 0.5 * self.reg * np.sum(W * W)
         dX, dW, db = affine_backward(dout, cache[-1])
         grads["W{}".format(self.num_layers)] = dW + self.reg * self.params["W{}".format(self.num_layers)]
         grads["b{}".format(self.num_layers)] = db
         for i in range(len(cache) - 2, -1, -1):
-            dX, dW, db = affine_relu_backward(dX, cache[i])
-            grads["W{}".format(i + 1)] = dW + self.reg * self.params["W{}".format(i + 1)]
-            grads["b{}".format(i + 1)] = db
+            if self.normalization == "batchnorm":
+                dX, dW, db, dgamma, dbeta = affine_bn_relu_backward(dX, cache[i])
+                grads["W{}".format(i + 1)] = dW + self.reg * self.params["W{}".format(i + 1)]
+                grads["b{}".format(i + 1)] = db
+                grads["gamma{}".format(i + 1)] = dgamma
+                grads["beta{}".format(i + 1)] = dbeta
+            elif self.normalization == "layernorm":
+                dX, dW, db, dgamma, dbeta = affine_ln_relu_backward(dX, cache[i])
+                grads["W{}".format(i + 1)] = dW + self.reg * self.params["W{}".format(i + 1)]
+                grads["b{}".format(i + 1)] = db
+                grads["gamma{}".format(i + 1)] = dgamma
+                grads["beta{}".format(i + 1)] = dbeta
+            else:
+                dX, dW, db = affine_relu_backward(dX, cache[i])
+                grads["W{}".format(i + 1)] = dW + self.reg * self.params["W{}".format(i + 1)]
+                grads["b{}".format(i + 1)] = db
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
