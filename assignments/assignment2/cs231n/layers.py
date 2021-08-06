@@ -148,7 +148,7 @@ def softmax_loss(x, y):
 
     scores = x
     n_train, n_classes = scores.shape
-    exp_scores = np.exp(scores)
+    exp_scores = np.exp(scores - np.max(scores, axis=1, keepdims=True))    # 减去最大值防止exp溢出
     r_sum = np.reshape(np.sum(exp_scores, axis=1), (n_train, 1))
     exp_scores /= r_sum
     loss = -np.sum(np.log(exp_scores[np.arange(n_train), y]))
@@ -495,7 +495,8 @@ def dropout_forward(x, dropout_param):
         #######################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        mask = (np.random.rand(*x.shape) < p) / p
+        out = x * mask
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         #######################################################################
@@ -507,7 +508,7 @@ def dropout_forward(x, dropout_param):
         #######################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        out = x
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         #######################################################################
@@ -537,7 +538,8 @@ def dropout_backward(dout, cache):
         #######################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        dropout_param, mask = cache
+        dx = dout * mask
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         #######################################################################

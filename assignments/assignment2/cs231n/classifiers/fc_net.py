@@ -173,6 +173,9 @@ class FullyConnectedNet(object):
                 tX, ch = affine_ln_relu_forward(tX, W, b, gamma, beta, ln_param)
             else:
                 tX, ch = affine_relu_forward(tX, W, b)
+            if self.use_dropout:
+                tX, drop_ch = dropout_forward(tX, self.dropout_param)
+                ch = (drop_ch, ch)
             cache.append(ch)
         tX, ch = affine_forward(tX, self.params["W{}".format(self.num_layers)], self.params["b{}".format(self.num_layers)])
         cache.append(ch)
@@ -211,6 +214,9 @@ class FullyConnectedNet(object):
         grads["W{}".format(self.num_layers)] = dW + self.reg * self.params["W{}".format(self.num_layers)]
         grads["b{}".format(self.num_layers)] = db
         for i in range(len(cache) - 2, -1, -1):
+            if self.use_dropout:
+                drop_ch, cache[i] = cache[i]
+                dX = dropout_backward(dX, drop_ch)
             if self.normalization == "batchnorm":
                 dX, dW, db, dgamma, dbeta = affine_bn_relu_backward(dX, cache[i])
                 grads["W{}".format(i + 1)] = dW + self.reg * self.params["W{}".format(i + 1)]
