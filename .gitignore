@@ -237,5 +237,6 @@ dist
 .vscode
 .idea/
 
-cifar-10-batches-py/
+datasets/
+!datasets/*.sh
 slides/
