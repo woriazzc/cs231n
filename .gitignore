@@ -238,3 +238,4 @@ dist
 .idea/
 
 cifar-10-batches-py/
+slides/
