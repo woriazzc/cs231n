@@ -148,7 +148,25 @@ class CaptioningRNN:
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        h0, c_h0 = affine_forward(features, W_proj, b_proj)
+        x, c_x = word_embedding_forward(captions_in, W_embed)
+        if self.cell_type == "rnn":
+            h, cache = rnn_forward(x, h0, Wx, Wh, b)
+        elif self.cell_type == "lstm":
+            h, cache = lstm_forward(x, h0, Wx, Wh, b)
+        scores, c_temp = temporal_affine_forward(h, W_vocab, b_vocab)
+        loss, dscores = temporal_softmax_loss(scores, captions_out, mask)
+        dh, dW_vocab, db_vocab = temporal_affine_backward(dscores, c_temp)
+        if self.cell_type == "rnn":
+            dx, dh0, dWx, dWh, db = rnn_backward(dh, cache)
+        elif self.cell_type == "lstm":
+            dx, dh0, dWx, dWh, db = lstm_backward(dh, cache)
+        dW_embed = word_embedding_backward(dx, c_x)
+        dfeatures, dW_proj, db_proj = affine_backward(dh0, c_h0)
+        grads["W_proj"], grads["b_proj"] = dW_proj, db_proj
+        grads["W_embed"] = dW_embed
+        grads["Wx"], grads["Wh"], grads["b"] = dWx, dWh, db
+        grads["W_vocab"], grads["b_vocab"] = dW_vocab, db_vocab
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -216,7 +234,18 @@ class CaptioningRNN:
         ###########################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        word = self._start * np.ones((N, 1), dtype=np.int32)
+        h, _ = affine_forward(features, W_proj, b_proj)
+        for i in range(max_length):
+            x = W_embed[word].reshape((N, -1))
+            if self.cell_type == "rnn":
+                h, _ = rnn_step_forward(x, h, Wx, Wh, b)
+            elif self.cell_type == "lstm":
+                pass
+            y, _ = affine_forward(h, W_vocab, b_vocab)
+            word = np.argmax(y, axis=1)
+            captions[:, i] = word
+            x = W_embed[word]
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################

@@ -240,3 +240,4 @@ dist
 datasets/
 !datasets/*.sh
 slides/
+.virtual_documents/
