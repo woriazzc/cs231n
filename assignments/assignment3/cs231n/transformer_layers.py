@@ -38,7 +38,11 @@ class PositionalEncoding(nn.Module):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        a = torch.arange(max_len).reshape((max_len, 1)).float()
+        b = 10000**(-torch.arange(0, embed_dim, 2) / embed_dim).reshape((1, embed_dim // 2))
+        c = torch.matmul(a, b)
+        pe[:, :, 0::2] = torch.sin(c)
+        pe[:, :, 1::2] = torch.cos(c)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -70,7 +74,7 @@ class PositionalEncoding(nn.Module):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        output = self.dropout(x + self.pe[:, :S, :])
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -126,7 +130,9 @@ class MultiHeadAttention(nn.Module):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        self.num_heads = num_heads
+        self.softmax = nn.Softmax(dim=-1)
+        self.dropout = nn.Dropout(p=dropout)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -154,10 +160,10 @@ class MultiHeadAttention(nn.Module):
           data in value according to the attention weights calculated using key
           and query.
         """
-        N, S, D = query.shape
-        N, T, D = value.shape
+        N, S, E = query.shape
+        N, T, E = value.shape
         # Create a placeholder, to be overwritten by your code below.
-        output = torch.empty((N, T, D))
+        output = torch.empty((N, S, E))
         ############################################################################
         # TODO: Implement multiheaded attention using the equations given in       #
         # Transformer_Captioning.ipynb.                                            #
@@ -174,7 +180,17 @@ class MultiHeadAttention(nn.Module):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        H = self.num_heads
+        d = E // H
+        query = self.query(query).reshape((N, S, H, d)).transpose(1, 2)    # (N, H, S, d)
+        key = self.key(key).reshape((N, T, H, d)).transpose(1, 2)          # (N, H, T, d)
+        value = self.value(value).reshape((N, T, H, d)).transpose(1, 2)    # (N, H, T, d)
+        alignment = torch.matmul(query, key.transpose(2, 3)) / math.sqrt(E // H)# (N, H, S, T)
+        if attn_mask is not None:
+            alignment = alignment.masked_fill(attn_mask==False, float('-inf'))
+        attention = self.dropout(self.softmax(alignment))                        # (N, H, S, T)
+        output = torch.matmul(attention, value).transpose(1, 2).reshape((N, S, E))
+        output = self.proj(output)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
