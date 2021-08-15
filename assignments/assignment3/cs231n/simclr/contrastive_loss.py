@@ -19,6 +19,7 @@ def sim(z_i, z_j):
     # HINT: torch.linalg.norm might be helpful.                                  #
     ##############################################################################
     
+    norm_dot_product = torch.cosine_similarity(z_i, z_j)
     
     ##############################################################################
     #                               END OF YOUR CODE                             #

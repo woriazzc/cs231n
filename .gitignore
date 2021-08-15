@@ -241,3 +241,5 @@ datasets/
 !datasets/*.sh
 slides/
 .virtual_documents/
+data/
+pretrained_model/
